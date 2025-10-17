@@ -1,9 +1,8 @@
-/index.tsx
 import React from 'react';
 import AppLayout from '@/components/AppLayout';
 import { AppProvider } from '@/contexts/AppContext';
 
-const index: React.FC = () => {
+const Index: React.FC = () => {
   return (
     <AppProvider>
       <AppLayout />
@@ -11,4 +10,4 @@ const index: React.FC = () => {
   );
 };
 
-export default index;
+export default Index;
