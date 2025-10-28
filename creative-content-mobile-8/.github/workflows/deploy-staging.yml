@@ -1,0 +1,272 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_STAGING_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_STAGING_ANON_KEY }}
+
+
+  migrate:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      migration_status: ${{ steps.migration.outcome }}
+      migration_time: ${{ steps.migration.outputs.execution_time }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Run Database Migrations
+        id: migration
+        run: |
+          START_TIME=$(date +%s)
+          echo "Starting migrations at $(date)"
+          
+          # Run migrations
+          supabase db push --db-url "${{ secrets.STAGING_DB_URL }}" > migration_output.txt 2>&1
+          MIGRATION_EXIT_CODE=$?
+          
+          END_TIME=$(date +%s)
+          EXECUTION_TIME=$((END_TIME - START_TIME))
+          echo "execution_time=${EXECUTION_TIME}s" >> $GITHUB_OUTPUT
+          
+          # Save migration details
+          echo "MIGRATION_TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_ENV
+          echo "MIGRATION_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+          echo "MIGRATION_AUTHOR=${{ github.actor }}" >> $GITHUB_ENV
+          echo "EXECUTION_TIME=${EXECUTION_TIME}" >> $GITHUB_ENV
+          
+          # Display output
+          cat migration_output.txt
+          
+          exit $MIGRATION_EXIT_CODE
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      
+      - name: Notify Migration Success (Slack)
+        if: success()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "✅ Staging Database Migration Successful",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Staging Migration Successful"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\nStaging"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Execution Time:*\n${{ steps.migration.outputs.execution_time }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Timestamp:*\n${{ env.MIGRATION_TIMESTAMP }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered By:*\n${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Notify Migration Failure (Slack)
+        if: failure()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "❌ Staging Database Migration Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Staging Migration Failed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\nStaging"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Execution Time:*\n${{ steps.migration.outputs.execution_time }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Timestamp:*\n${{ env.MIGRATION_TIMESTAMP }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered By:*\n${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Rollback Instructions:*\n1. Go to Actions tab\n2. Select 'Rollback Database Migration'\n3. Click 'Run workflow'\n4. Enter migration version to rollback\n5. Select 'staging' environment"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Error Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Send Email Notification (Success)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ Staging Migration Successful - ViraLink"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            Staging Database Migration Completed Successfully
+            
+            Environment: Staging
+            Execution Time: ${{ steps.migration.outputs.execution_time }}
+            Timestamp: ${{ env.MIGRATION_TIMESTAMP }}
+            Triggered By: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+            
+            Workflow Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit Details: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            
+            The migration has been applied successfully to the staging database.
+      
+      - name: Send Email Notification (Failure)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ Staging Migration Failed - ViraLink"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            Staging Database Migration Failed
+            
+            Environment: Staging
+            Execution Time: ${{ steps.migration.outputs.execution_time }}
+            Timestamp: ${{ env.MIGRATION_TIMESTAMP }}
+            Triggered By: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+            
+            ROLLBACK INSTRUCTIONS:
+            1. Go to: https://github.com/${{ github.repository }}/actions/workflows/migration-rollback.yml
+            2. Click "Run workflow"
+            3. Enter the migration version to rollback to
+            4. Select "staging" as the environment
+            5. Click "Run workflow" to execute rollback
+            
+            Error Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit Details: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            
+            Please investigate the error and perform a rollback if necessary.
+
+
+  deploy:
+    needs: migrate
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_STAGING_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_STAGING_ANON_KEY }}
+          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.VITE_STRIPE_STAGING_PUBLIC_KEY }}
+      
+      - name: Deploy to Netlify Staging
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: './dist'
+          production-deploy: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Staging deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_STAGING_SITE_ID }}

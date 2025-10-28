@@ -1,0 +1,221 @@
+name: Rollback Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      migration_file:
+        description: 'Migration file to rollback (e.g., 002_add_content_table.sql)'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Rollback Migration
+        id: rollback
+        run: |
+          START_TIME=$(date +%s)
+          echo "Starting rollback at $(date)"
+          
+          DB_URL="${{ inputs.environment == 'production' && secrets.PRODUCTION_DB_URL || secrets.STAGING_DB_URL }}"
+          
+          # Run rollback script
+          ./scripts/rollback-migration.sh "${{ inputs.migration_file }}" "$DB_URL" > rollback_output.txt 2>&1
+          ROLLBACK_EXIT_CODE=$?
+          
+          END_TIME=$(date +%s)
+          EXECUTION_TIME=$((END_TIME - START_TIME))
+          echo "execution_time=${EXECUTION_TIME}s" >> $GITHUB_OUTPUT
+          
+          # Save rollback details
+          echo "ROLLBACK_TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_ENV
+          echo "ROLLBACK_AUTHOR=${{ github.actor }}" >> $GITHUB_ENV
+          echo "EXECUTION_TIME=${EXECUTION_TIME}" >> $GITHUB_ENV
+          
+          # Display output
+          cat rollback_output.txt
+          
+          exit $ROLLBACK_EXIT_CODE
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      
+      - name: Notify Rollback Success (Slack)
+        if: success()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "✅ Database Migration Rollback Successful",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Migration Rollback Successful"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\n${{ inputs.environment }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Migration File:*\n${{ inputs.migration_file }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Execution Time:*\n${{ steps.rollback.outputs.execution_time }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Timestamp:*\n${{ env.ROLLBACK_TIMESTAMP }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Executed By:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Notify Rollback Failure (Slack)
+        if: failure()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "❌ Database Migration Rollback Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Migration Rollback Failed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\n${{ inputs.environment }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Migration File:*\n${{ inputs.migration_file }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Execution Time:*\n${{ steps.rollback.outputs.execution_time }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Timestamp:*\n${{ env.ROLLBACK_TIMESTAMP }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Executed By:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *URGENT: Manual intervention required*\nThe automated rollback has failed. Please check the database state and perform manual rollback if necessary."
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Error Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Send Email Notification (Success)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ Migration Rollback Successful - ${{ inputs.environment }} - ViraLink"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            Database Migration Rollback Completed Successfully
+            
+            Environment: ${{ inputs.environment }}
+            Migration File: ${{ inputs.migration_file }}
+            Execution Time: ${{ steps.rollback.outputs.execution_time }}
+            Timestamp: ${{ env.ROLLBACK_TIMESTAMP }}
+            Executed By: ${{ github.actor }}
+            
+            Workflow Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            The database has been successfully rolled back to the previous state.
+      
+      - name: Send Email Notification (Failure)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ Migration Rollback Failed - ${{ inputs.environment }} - ViraLink - URGENT"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          priority: high
+          body: |
+            ⚠️ DATABASE MIGRATION ROLLBACK FAILED ⚠️
+            
+            Environment: ${{ inputs.environment }}
+            Migration File: ${{ inputs.migration_file }}
+            Execution Time: ${{ steps.rollback.outputs.execution_time }}
+            Timestamp: ${{ env.ROLLBACK_TIMESTAMP }}
+            Executed By: ${{ github.actor }}
+            
+            URGENT: Manual intervention required!
+            
+            The automated rollback has failed. Please:
+            1. Check the database state immediately
+            2. Review the error logs at: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            3. Perform manual rollback if necessary
+            4. Contact the database administrator if needed
+            
+            Error Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
