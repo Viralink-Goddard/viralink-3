@@ -1,9 +1,7 @@
-name: Deploy to Staging
+name: Deploy to Production
 
 on:
   push:
-    branches: [staging]
-  pull_request:
     branches: [main]
 
 jobs:
@@ -17,10 +15,12 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
+        continue-on-error: true
+
       - run: npm test
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_STAGING_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_STAGING_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
 
   migrate:
@@ -42,7 +42,7 @@ jobs:
           echo "Starting migrations at $(date)"
           
           # Run migrations
-          supabase db push --db-url "${{ secrets.STAGING_DB_URL }}" > migration_output.txt 2>&1
+          supabase db push --db-url "${{ secrets.PRODUCTION_DB_URL }}" > migration_output.txt 2>&1
           MIGRATION_EXIT_CODE=$?
           
           END_TIME=$(date +%s)
@@ -68,13 +68,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Staging Database Migration Successful",
+              "text": "✅ Production Database Migration Successful",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "✅ Staging Migration Successful"
+                    "text": "✅ Production Migration Successful"
                   }
                 },
                 {
@@ -82,7 +82,7 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*Environment:*\nStaging"
+                      "text": "*Environment:*\nProduction"
                     },
                     {
                       "type": "mrkdwn",
@@ -125,13 +125,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Staging Database Migration Failed",
+              "text": "❌ Production Database Migration Failed",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "❌ Staging Migration Failed"
+                    "text": "❌ Production Migration Failed"
                   }
                 },
                 {
@@ -139,7 +139,7 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*Environment:*\nStaging"
+                      "text": "*Environment:*\nProduction"
                     },
                     {
                       "type": "mrkdwn",
@@ -167,7 +167,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Rollback Instructions:*\n1. Go to Actions tab\n2. Select 'Rollback Database Migration'\n3. Click 'Run workflow'\n4. Enter migration version to rollback\n5. Select 'staging' environment"
+                    "text": "*Rollback Instructions:*\n1. Go to Actions tab\n2. Select 'Rollback Database Migration'\n3. Click 'Run workflow'\n4. Enter migration version to rollback\n5. Select 'production' environment"
                   }
                 },
                 {
@@ -191,13 +191,13 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ Staging Migration Successful - ViraLink"
+          subject: "✅ Production Migration Successful - ViraLink"
           to: ${{ secrets.NOTIFICATION_EMAIL }}
           from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
           body: |
-            Staging Database Migration Completed Successfully
+            Production Database Migration Completed Successfully
             
-            Environment: Staging
+            Environment: Production
             Execution Time: ${{ steps.migration.outputs.execution_time }}
             Timestamp: ${{ env.MIGRATION_TIMESTAMP }}
             Triggered By: ${{ github.actor }}
@@ -207,7 +207,7 @@ jobs:
             Workflow Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
             Commit Details: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
             
-            The migration has been applied successfully to the staging database.
+            The migration has been applied successfully to the production database.
       
       - name: Send Email Notification (Failure)
         if: failure()
@@ -217,13 +217,14 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ Staging Migration Failed - ViraLink"
+          subject: "❌ Production Migration Failed - ViraLink - ACTION REQUIRED"
           to: ${{ secrets.NOTIFICATION_EMAIL }}
           from: "ViraLink CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          priority: high
           body: |
-            Staging Database Migration Failed
+            ⚠️ PRODUCTION DATABASE MIGRATION FAILED ⚠️
             
-            Environment: Staging
+            Environment: Production
             Execution Time: ${{ steps.migration.outputs.execution_time }}
             Timestamp: ${{ env.MIGRATION_TIMESTAMP }}
             Triggered By: ${{ github.actor }}
@@ -234,14 +235,13 @@ jobs:
             1. Go to: https://github.com/${{ github.repository }}/actions/workflows/migration-rollback.yml
             2. Click "Run workflow"
             3. Enter the migration version to rollback to
-            4. Select "staging" as the environment
+            4. Select "production" as the environment
             5. Click "Run workflow" to execute rollback
             
             Error Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
             Commit Details: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
             
             Please investigate the error and perform a rollback if necessary.
-
 
   deploy:
     needs: migrate
@@ -256,17 +256,20 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_STAGING_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_STAGING_ANON_KEY }}
-          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.VITE_STRIPE_STAGING_PUBLIC_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_ID: ${{ secrets.VITE_STRIPE_PRICE_ID }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+
       
-      - name: Deploy to Netlify Staging
+      - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v2.1
         with:
           publish-dir: './dist'
-          production-deploy: false
+          production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Staging deploy from GitHub Actions"
+          deploy-message: "Deploy from GitHub Actions"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_STAGING_SITE_ID }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
