@@ -334,18 +334,15 @@ export default function Dashboard() {
                     <div><label className="block text-sm font-medium mb-2">Platform</label>
                       <Select value={platform} onValueChange={setPlatform}><SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Instagram">Instagram</SelectItem>
                           <SelectItem value="TikTok">TikTok</SelectItem>
+                          <SelectItem value="Instagram">Instagram</SelectItem>
                           <SelectItem value="YouTube">YouTube</SelectItem>
-                          <SelectItem value="Twitter">Twitter</SelectItem>
                         </SelectContent></Select></div>
                     <div><label className="block text-sm font-medium mb-2">Niche</label>
                       <Select value={niche} onValueChange={setNiche}><SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Fitness">Fitness</SelectItem>
-                          <SelectItem value="Conscious Lifestyle">Conscious Lifestyle</SelectItem>
                           <SelectItem value="Finance">Finance</SelectItem>
-                          <SelectItem value="Health and Wellness">Health and Wellness</SelectItem>
                           <SelectItem value="Technology">Technology</SelectItem>
                           <SelectItem value="Travel and Leisure">Travel and Leisure</SelectItem>
                           <SelectItem value="Food and Cooking">Food and Cooking</SelectItem>

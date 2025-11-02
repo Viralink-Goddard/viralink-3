@@ -20,12 +20,9 @@ interface Props {
 }
 
 const platformColors: Record<string, string> = {
-  Twitter: 'bg-blue-500',
-  Instagram: 'bg-pink-500',
-  LinkedIn: 'bg-indigo-600',
   TikTok: 'bg-black',
-  YouTube: 'bg-red-600',
-  Facebook: 'bg-blue-700'
+  Instagram: 'bg-pink-500',
+  YouTube: 'bg-red-600'
 };
 
 export default function ScheduledPostCard({ post, onEdit, onDelete }: Props) {

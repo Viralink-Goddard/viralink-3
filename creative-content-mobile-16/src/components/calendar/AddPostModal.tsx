@@ -28,7 +28,7 @@ export default function AddPostModal({ open, onClose, onSave, editPost, selected
   const [formData, setFormData] = useState({
     scheduled_date: selectedDate || '',
     scheduled_time: '09:00',
-    platform: 'Twitter',
+    platform: 'TikTok',
     content_text: '',
     content_type: 'Educational',
     status: 'scheduled'
@@ -78,12 +78,9 @@ export default function AddPostModal({ open, onClose, onSave, editPost, selected
               <Select value={formData.platform} onValueChange={(v) => setFormData({...formData, platform: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Twitter">Twitter</SelectItem>
-                  <SelectItem value="Instagram">Instagram</SelectItem>
-                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
                   <SelectItem value="TikTok">TikTok</SelectItem>
+                  <SelectItem value="Instagram">Instagram</SelectItem>
                   <SelectItem value="YouTube">YouTube</SelectItem>
-                  <SelectItem value="Facebook">Facebook</SelectItem>
                 </SelectContent>
               </Select>
             </div>

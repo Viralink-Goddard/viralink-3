@@ -29,7 +29,7 @@ export const TestimonialsSection: React.FC = () => {
           <TestimonialCard
             quote="As a full-time creator, the $10/month is nothing compared to the time I save. The AI hooks are consistently better than what I'd come up with alone."
             author="Emily Rodriguez"
-            role="TikTok Content Creator"
+            role="Content Creator"
             imageUrl="https://d64gsuwffb70l.cloudfront.net/68dce3ed939da98291717f4c_1759306967458_2f021d2e.webp"
           />
         </div>

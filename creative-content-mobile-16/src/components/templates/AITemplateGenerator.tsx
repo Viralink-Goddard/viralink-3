@@ -141,11 +141,9 @@ export const AITemplateGenerator: React.FC<AITemplateGeneratorProps> = ({ onTemp
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="instagram">Instagram</SelectItem>
                   <SelectItem value="tiktok">TikTok</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
                   <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="twitter">Twitter</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
                 </SelectContent>
               </Select>
             </div>

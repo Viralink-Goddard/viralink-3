@@ -253,8 +253,8 @@ class AIService {
       insights.push('Focus on creating more engaging hooks and using trending hashtags to boost visibility.');
     }
 
-    if (data.metrics.bestPerformingPlatform === 'TikTok') {
-      insights.push('TikTok is your strongest platform. Consider creating more short-form video content.');
+    if (data.metrics.bestPerformingPlatform === 'YouTube') {
+      insights.push('YouTube is your strongest platform. Consider creating more long-form video content.');
     } else if (data.metrics.bestPerformingPlatform === 'LinkedIn') {
       insights.push('LinkedIn drives your best engagement. Share more professional insights and industry news.');
     } else {

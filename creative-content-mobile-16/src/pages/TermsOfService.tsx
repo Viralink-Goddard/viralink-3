@@ -29,7 +29,7 @@ const TermsOfService: React.FC = () => {
 
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">4. Social Media Integration</h2>
-              <p>By connecting your social media accounts (Instagram, Facebook, TikTok), you grant us permission to access and manage content on your behalf as necessary to provide our services. You can revoke access at any time through your account settings.</p>
+              <p>By connecting your social media accounts (TikTok, Instagram, YouTube), you grant us permission to access and manage content on your behalf as necessary to provide our services. You can revoke access at any time through your account settings.</p>
             </section>
 
             <section>

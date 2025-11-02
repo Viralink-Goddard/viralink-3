@@ -43,9 +43,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenSignup }) => {
             Go Viral on <span className="text-yellow-300">Every Platform</span>
           </h1>
           <p className="text-xl md:text-2xl mb-10 text-blue-100 leading-relaxed">
-            AI-powered content creation and scheduling for Instagram, TikTok, Twitter, and LinkedIn. 
+            AI-powered content creation and scheduling for TikTok, Instagram, and YouTube. 
             Create viral content in seconds, schedule posts across all platforms, and track your growth.
           </p>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
               onClick={handleGetStarted}

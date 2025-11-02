@@ -57,7 +57,7 @@ export default function Analytics() {
         totalImpressions: totalImp,
         totalEngagements: totalEng,
         avgEngagementRate: totalEng > 0 ? (totalEng / totalImp * 100) : 0,
-        bestPerformingPlatform: platforms[0]?.platform || 'Twitter',
+        bestPerformingPlatform: platforms[0]?.platform || 'TikTok',
         optimalPostingTime: '2:00 PM - 4:00 PM',
         topContentType: 'Educational'
       });
@@ -86,13 +86,12 @@ export default function Analytics() {
 
   const generatePlatformData = () => {
     return [
-      { platform: 'Twitter', impressions: 15000, engagements: 1200, engagementRate: 8.0 },
+      { platform: 'TikTok', impressions: 18000, engagements: 2100, engagementRate: 11.7 },
       { platform: 'Instagram', impressions: 12000, engagements: 1500, engagementRate: 12.5 },
-      { platform: 'LinkedIn', impressions: 8000, engagements: 600, engagementRate: 7.5 },
-      { platform: 'TikTok', impressions: 20000, engagements: 3000, engagementRate: 15.0 },
       { platform: 'YouTube', impressions: 10000, engagements: 800, engagementRate: 8.0 }
     ];
   };
+
 
   const generateHashtagData = () => {
     const tags = ['contentcreation', 'ai', 'marketing', 'socialmedia', 'growth', 'viral', 'trending', 'business', 'startup', 'tech'];
@@ -117,7 +116,7 @@ export default function Analytics() {
     } catch (error) {
       // Fallback insights
       setInsights([
-        'Your engagement rate peaks on TikTok - consider increasing content frequency there',
+        'Your engagement rate peaks on Instagram - consider increasing content frequency there',
         'Educational content performs 40% better than promotional posts',
         'Posting between 2-4 PM yields highest engagement across all platforms',
         'Hashtags #ai and #contentcreation drive 3x more impressions',
@@ -227,10 +226,8 @@ export default function Analytics() {
                         <Clock className="w-4 h-4 text-gray-500" />
                       </div>
                       <span className="text-sm font-medium">
-                        {platform.platform === 'TikTok' ? '6-9 PM' : 
-                         platform.platform === 'Instagram' ? '11 AM - 1 PM' :
-                         platform.platform === 'LinkedIn' ? '9-10 AM' :
-                         platform.platform === 'Twitter' ? '2-4 PM' : '5-7 PM'}
+                        {platform.platform === 'TikTok' ? '6-10 PM' : 
+                         platform.platform === 'Instagram' ? '11 AM - 1 PM' : '5-7 PM'}
                       </span>
                     </div>
                   ))}
